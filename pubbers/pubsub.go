@@ -20,7 +20,7 @@ func NewPubSubWriter() (PubSubWriter, error){
 		return PubSubWriter{nil, ctx}, err
 	}
 
-	name := os.Getenv("CLAWS_TOPIC")
+	name := os.Getenv("PUB_TOPIC")
 	log.Printf("Publishing to topic: %v\n", name)
 	topic := client.Topic(name)
 	return PubSubWriter{topic, ctx}, nil

@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 	"github.com/confluentinc/confluent-kafka-go-dev/kafka"
-
 )
 
 type KafkaWriter struct {
@@ -14,14 +13,15 @@ type KafkaWriter struct {
 
 func NewKafkaWriter() (KafkaWriter, error) {
 	// get env vars
+	topic := os.Getenv("PUB_TOPIC")
+	brokers := os.Getenv("KAFKA_BROKERS")
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": "localhost",
+		"bootstrap.servers": brokers,
 		"message.send.max.retries": "50",
 		"retry.backoff.ms": "5000",
 	})
 
-	topic := os.Getenv("CLAWS_TOPIC")
 	return KafkaWriter{p, topic}, err
 }
 
