@@ -1,4 +1,4 @@
-module github.com/agriuseatstweets/go-pubbers/pubbers
+module github.com/agriuseatstweets/go-pubbers
 
 go 1.13
 
