@@ -3,7 +3,7 @@ package pubbers
 import (
 	"log"
 	"os"
-	"github.com/confluentinc/confluent-kafka-go-dev/kafka"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 type KafkaWriter struct {
