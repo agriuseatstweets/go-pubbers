@@ -12,14 +12,17 @@ type KafkaWriter struct {
 }
 
 func NewKafkaWriter() (KafkaWriter, error) {
-	// get env vars
 	topic := os.Getenv("PUB_TOPIC")
+
+	// TODO: Validate env vars or throw error
+
 	brokers := os.Getenv("KAFKA_BROKERS")
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": brokers,
 		"message.send.max.retries": "50",
 		"retry.backoff.ms": "5000",
+		"partitioner": "murmur2_random", // consistent with java
 	})
 
 	return KafkaWriter{p, topic}, err
