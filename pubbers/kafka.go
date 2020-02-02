@@ -28,7 +28,7 @@ func NewKafkaWriter() (KafkaWriter, error) {
 	return KafkaWriter{p, topic}, err
 }
 
-func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) WriteResults {
+func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error, close bool) WriteResults {
 
 	p := writer.Producer
 	topic := writer.Topic
@@ -50,9 +50,11 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 			sent++
 		}
 
-		log.Printf("Flushing outstanding messages\n")
 		p.Flush(15 * 1000)
-		p.Close()
+
+		if close {
+			p.Close()
+		}
 	}()
 
 	written := 0
@@ -77,7 +79,10 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 			}
 		}
 
+		if written == sent {
+			break
+		}
 	}
-	return WriteResults{sent, written}
 
+	return WriteResults{sent, written}
 }
