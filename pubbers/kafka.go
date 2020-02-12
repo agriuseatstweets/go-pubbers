@@ -2,9 +2,22 @@ package pubbers
 
 import (
 	"log"
-	"os"
+	"github.com/caarlos0/env/v6"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
+
+type Config struct {
+	KafkaBrokers string `env:"KAFKA_BROKERS,required"`
+	Topic string `env:"PUB_TOPIC,required"`
+}
+
+func getConfig() Config {
+	cfg := Config{}
+	if err := env.Parse(&cfg); err != nil {
+		panic(err)
+	}
+	return cfg
+}
 
 type KafkaWriter struct {
 	Producer *kafka.Producer
@@ -12,20 +25,16 @@ type KafkaWriter struct {
 }
 
 func NewKafkaWriter() (KafkaWriter, error) {
-	topic := os.Getenv("PUB_TOPIC")
-
-	// TODO: Validate env vars or throw error
-
-	brokers := os.Getenv("KAFKA_BROKERS")
+	cnf := getConfig()
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
-		"bootstrap.servers": brokers,
+		"bootstrap.servers": cnf.KafkaBrokers,
 		"message.send.max.retries": "50",
 		"retry.backoff.ms": "5000",
 		"partitioner": "murmur2_random", // consistent with java
 	})
 
-	return KafkaWriter{p, topic}, err
+	return KafkaWriter{p, cnf.Topic}, err
 }
 
 func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) WriteResults {
