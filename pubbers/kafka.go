@@ -2,21 +2,12 @@ package pubbers
 
 import (
 	"log"
-	"github.com/caarlos0/env/v6"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-type Config struct {
-	KafkaBrokers string `env:"KAFKA_BROKERS,required"`
-	Topic string `env:"PUB_TOPIC,required"`
-}
-
-func getConfig() Config {
-	cfg := Config{}
-	if err := env.Parse(&cfg); err != nil {
-		panic(err)
-	}
-	return cfg
+type KafkaWriterConfig struct {
+	KafkaBrokers string
+	Topic string
 }
 
 type KafkaWriter struct {
@@ -24,8 +15,7 @@ type KafkaWriter struct {
 	Topic string
 }
 
-func NewKafkaWriter() (KafkaWriter, error) {
-	cnf := getConfig()
+func NewKafkaWriter(cnf KafkaWriterConfig) (KafkaWriter, error) {
 
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": cnf.KafkaBrokers,
@@ -38,7 +28,6 @@ func NewKafkaWriter() (KafkaWriter, error) {
 }
 
 func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) WriteResults {
-
 	p := writer.Producer
 	topic := writer.Topic
 
@@ -88,5 +77,4 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 
 	}
 	return WriteResults{sent, written}
-
 }
