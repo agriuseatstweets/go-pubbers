@@ -16,7 +16,6 @@ type KafkaWriter struct {
 }
 
 func NewKafkaWriter(cnf KafkaWriterConfig) (KafkaWriter, error) {
-
 	p, err := kafka.NewProducer(&kafka.ConfigMap{
 		"bootstrap.servers": cnf.KafkaBrokers,
 		"message.send.max.retries": "50",
@@ -33,18 +32,15 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 
 	sent := 0
 	go func(){
-		for msg := range messages {
+		pchan := p.ProduceChannel()
 
-			km := &kafka.Message{
+		for msg := range messages {
+			km := kafka.Message{
 				TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
 				Key: msg.Key,
 				Value: msg.Value}
 
-			err := p.Produce(km, nil)
-			if err != nil {
-				errs <- err
-				break
-			}
+			pchan <- &km
 			sent++
 		}
 
@@ -61,6 +57,7 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 			m := ev
 			if m.TopicPartition.Error != nil {
 				log.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+				errs <- m.TopicPartition.Error
 			} else {
 				written++
 			}
@@ -74,7 +71,6 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 				log.Printf("Non-fatal Error: %v\n", e)
 			}
 		}
-
 	}
 	return WriteResults{sent, written}
 }
