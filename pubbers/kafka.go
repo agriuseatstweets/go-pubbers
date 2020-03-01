@@ -26,7 +26,7 @@ func NewKafkaWriter(cnf KafkaWriterConfig) (KafkaWriter, error) {
 	return KafkaWriter{p, cnf.Topic}, err
 }
 
-func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) WriteResults {
+func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) (chan *kafka.Message, WriteResults) {
 	p := writer.Producer
 	topic := writer.Topic
 
@@ -49,28 +49,34 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 		p.Close()
 	}()
 
+	outch := make(chan *kafka.Message)
 	written := 0
 
-	for e := range p.Events() {
-		switch ev := e.(type) {
-		case *kafka.Message:
-			m := ev
-			if m.TopicPartition.Error != nil {
-				log.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
-				errs <- m.TopicPartition.Error
-			} else {
-				written++
-			}
+	go func(){
+		defer close(outch)
+		for e := range p.Events() {
+			switch ev := e.(type) {
+			case *kafka.Message:
+				m := ev
+				if m.TopicPartition.Error != nil {
+					log.Printf("Delivery failed: %v\n", m.TopicPartition.Error)
+					errs <- m.TopicPartition.Error
+				} else {
+					outch <- m
+					written++
+				}
 
-		case kafka.Error:
-			e := ev
-			if e.IsFatal() {
-				errs <- e
-				break
-			} else {
-				log.Printf("Non-fatal Error: %v\n", e)
+			case kafka.Error:
+				e := ev
+				if e.IsFatal() {
+					errs <- e
+					break
+				} else {
+					log.Printf("Non-fatal Error: %v\n", e)
+				}
 			}
 		}
-	}
-	return WriteResults{sent, written}
+	}()
+
+	return outch, WriteResults{sent, written}
 }
