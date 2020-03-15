@@ -26,11 +26,13 @@ func NewKafkaWriter(cnf KafkaWriterConfig) (KafkaWriter, error) {
 	return KafkaWriter{p, cnf.Topic}, err
 }
 
-func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) (chan *kafka.Message, WriteResults) {
+
+func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) (chan *kafka.Message, *WriteResults) {
 	p := writer.Producer
 	topic := writer.Topic
 
-	sent := 0
+	results := &WriteResults{0, 0}
+
 	go func(){
 		pchan := p.ProduceChannel()
 
@@ -41,7 +43,7 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 				Value: msg.Value}
 
 			pchan <- &km
-			sent++
+			results.Sent++
 		}
 
 		log.Printf("Flushing outstanding messages\n")
@@ -50,7 +52,6 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 	}()
 
 	outch := make(chan *kafka.Message)
-	written := 0
 
 	go func(){
 		defer close(outch)
@@ -63,7 +64,7 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 					errs <- m.TopicPartition.Error
 				} else {
 					outch <- m
-					written++
+					results.Written++
 				}
 
 			case kafka.Error:
@@ -78,5 +79,5 @@ func (writer KafkaWriter) Publish(messages chan QueuedMessage, errs chan error) 
 		}
 	}()
 
-	return outch, WriteResults{sent, written}
+	return outch, results
 }
